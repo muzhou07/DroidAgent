@@ -1,0 +1,5 @@
+-keep class com.muzhou.droidagent.agent.** { *; }
+-keepattributes *Annotation*, InnerClasses, Signature
+-dontwarn okhttp3.**
+-dontwarn okio.**
+-dontwarn org.jsoup.**
