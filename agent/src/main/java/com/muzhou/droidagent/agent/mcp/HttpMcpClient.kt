@@ -20,8 +20,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
-import okhttp3.ResponseBody
-import okio.Buffer
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
@@ -168,7 +166,7 @@ class HttpMcpClient(
         response.use { resp ->
             resp.header("Mcp-Session-Id")?.let { sessionId = it }
             if (!resp.isSuccessful) {
-                val body = runCatching { readBodyLimited(resp.body) }.getOrDefault("")
+                val body = runCatching { resp.body?.string() }.getOrNull().orEmpty()
                 throw McpException("MCP 请求失败 HTTP ${resp.code}：${truncateTail(body, 400)}")
             }
             if (isNotification || resp.code == 202 || resp.code == 204) return@withContext null
@@ -178,7 +176,7 @@ class HttpMcpClient(
                 val result = readSseForId(body.source(), id)
                 result ?: throw McpException("MCP SSE 响应中未找到匹配的 id")
             } else {
-                parseRpcResult(readBodyLimited(body))
+                parseRpcResult(body.string())
             }
         }
     }
@@ -188,14 +186,8 @@ class HttpMcpClient(
         expectedId: Long?,
     ): JsonObject? {
         var data = StringBuilder()
-        var total = 0L
-        var lines = 0
         while (true) {
             val line = source.readUtf8Line() ?: break
-            total += line.length
-            if (++lines > MAX_SSE_LINES || total > MAX_RESPONSE_BYTES) {
-                throw McpException("MCP SSE 响应过大，已中止")
-            }
             if (line.isEmpty()) {
                 val raw = data.toString().trim()
                 data = StringBuilder()
@@ -212,25 +204,6 @@ class HttpMcpClient(
             }
         }
         return null
-    }
-
-    private fun readBodyLimited(body: ResponseBody?): String {
-        if (body == null) return ""
-        val declared = body.contentLength()
-        if (declared > MAX_RESPONSE_BYTES) {
-            throw McpException("MCP 响应过大（${declared} 字节），已拒绝读取")
-        }
-        val buffer = Buffer()
-        var total = 0L
-        while (true) {
-            val read = body.source().read(buffer, 64L * 1024L)
-            if (read == -1L) break
-            total += read
-            if (total > MAX_RESPONSE_BYTES) {
-                throw McpException("MCP 响应超过 ${MAX_RESPONSE_BYTES / 1024 / 1024}MB，已拒绝读取")
-            }
-        }
-        return buffer.readUtf8()
     }
 
     private fun parseRpcResult(text: String): JsonObject {
@@ -254,15 +227,10 @@ class HttpMcpClient(
 
     companion object {
         const val LATEST_PROTOCOL = "2025-03-26"
-        private const val MAX_RESPONSE_BYTES = 8L * 1024 * 1024
-        private const val MAX_SSE_LINES = 200_000
-
         fun defaultHttp(): OkHttpClient = OkHttpClient.Builder()
             .connectTimeout(20, TimeUnit.SECONDS)
             .readTimeout(120, TimeUnit.SECONDS)
             .callTimeout(180, TimeUnit.SECONDS)
-            // 不跟随重定向，避免把自定义 Authorization 头转发到其他主机。
-            .followRedirects(false)
             .build()
     }
 }

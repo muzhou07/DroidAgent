@@ -220,11 +220,6 @@ class OpenAiClient(
         val payload = AgentJson.json.encodeToString(ChatRequest.serializer(), body)
         val url = endpoint(config.baseUrl).toHttpUrlOrNull()
             ?: throw LlmException("无效的 API 地址：${config.baseUrl}")
-        if (url.scheme == "http" && !isLocalOrPrivateHost(url.host)) {
-            throw LlmException(
-                "为保护 API Key，明文 HTTP 仅允许本机或局域网地址；公网服务请使用 HTTPS。",
-            )
-        }
         val builder = Request.Builder()
             .url(url)
             .post(payload.toRequestBody(JSON_MEDIA))
@@ -247,31 +242,6 @@ class OpenAiClient(
         if (url.encodedPath.endsWith("/chat/completions")) return base
         val root = if (url.encodedPath.isBlank() || url.encodedPath == "/") "$base/v1" else base
         return "$root/chat/completions"
-    }
-
-    private fun isLocalOrPrivateHost(host: String): Boolean {
-        if (host.equals("localhost", ignoreCase = true) ||
-            host.endsWith(".local", ignoreCase = true) ||
-            host.endsWith(".lan", ignoreCase = true)
-        ) {
-            return true
-        }
-        val addresses = runCatching { java.net.InetAddress.getAllByName(host) }.getOrNull() ?: return false
-        if (addresses.isEmpty()) return false
-        return addresses.all { address ->
-            when {
-                address.isLoopbackAddress || address.isSiteLocalAddress ||
-                    address.isLinkLocalAddress || address.isAnyLocalAddress -> true
-                address.address.size == 16 ->
-                    (address.address[0].toInt() and 0xfe) == 0xfc
-                address.address.size == 4 -> {
-                    val bytes = address.address
-                    bytes[0].toInt() == 0 ||
-                        (bytes[0].toInt() == 100 && bytes[1].toInt() in 64..127)
-                }
-                else -> false
-            }
-        }
     }
 
     private fun httpErrorMessage(code: Int, body: String?): String {

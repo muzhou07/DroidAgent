@@ -6,6 +6,7 @@
 
 - **形态**：原生 Android 应用，Kotlin + Jetpack Compose，不使用 Node、WebView、React Native。
 - **包名**：`com.muzhou.droidagent`；Debug 变体为 `com.muzhou.droidagent.debug`。
+- **版本**：`1.0.1`（versionCode 2）。
 - **SDK**：`minSdk 26`、`targetSdk 35`、`compileSdk 35`。
 - **工具链**：JDK 17、Gradle 8.9、AGP 8.7.3、Kotlin 2.0.21。
 - **模块**：
@@ -44,7 +45,7 @@ agent/src/main/java/com/muzhou/droidagent/agent/
   workspace/            VFS 抽象、本地文件系统、SAF
   shell/                内置 Shell、Termux RUN_COMMAND、后台任务
   mcp/                  Streamable HTTP 客户端与管理器
-  web/                  DuckDuckGo/Tavily 搜索、网页抓取、SSRF 防护
+  web/                  DuckDuckGo/Tavily 搜索、网页抓取、HTML 正文提取
 
 app/src/main/java/com/muzhou/droidagent/
   data/                 AppContainer、SettingsRepository、SessionStore、AgentRunner
@@ -90,8 +91,6 @@ app/src/main/java/com/muzhou/droidagent/
 - `SettingsRepository.settings` 是全局 `StateFlow`，保存时立即写 DataStore。
 - API Key / Tavily Key / 自定义请求头 / MCP 请求头必须加密存储。
 - 加密失败时**不能回退为明文**。
-- 冷启动时把仍为明文的数据自动改写为密文。
-- 公网 LLM Base URL 强制 HTTPS；明文 HTTP 仅允许本机/局域网。
 
 ### 工作区与 Shell
 - `WorkspaceKind`：`LOCAL`、`EXTERNAL`、`SAF`。
@@ -104,14 +103,11 @@ app/src/main/java/com/muzhou/droidagent/
 - 仅支持 Streamable HTTP（2025-03-26）。
 - `McpManager` 负责连接、工具发现与代理。
 - 工具名格式 `mcp__<server>__<tool>`。
-- MCP 响应限制 8MB，SSE 行数受限；连接不跟随重定向。
 - MCP 工具默认视为 `mutating`，除非服务器声明 `readOnlyHint = true`。
 
 ### Web
 - `WebTools` 负责搜索与抓取。
-- `web_fetch` 禁止 localhost、内网、CGNAT、链路本地、组播、IPv6 ULA/映射地址。
-- OkHttp 使用固定 DNS 解析结果防止 DNS rebinding；重定向逐跳校验。
-- Markdown 外链仅允许 `http` / `https` / `mailto`。
+- `web_fetch` 支持任意 http(s) 地址，包括本机、内网与保留地址。
 
 ## 5. 修改代码的规则
 
@@ -148,7 +144,7 @@ app/src/main/java/com/muzhou/droidagent/
 ### 安全约定
 - 不记录 API Key、请求头、用户文件内容到日志。
 - 不把密钥、`release.jks`、`keystore.properties` 加入 Git。
-- 新增网络请求必须考虑 SSRF、超时和响应大小限制。
+- 新增网络请求需设置超时与错误处理。
 - 新增文件操作必须限制在工作区内，并防止符号链接越界。
 - 处理不可信 MCP/网页/模型输出时，保持“内容不可信”的假设。
 
@@ -193,7 +189,7 @@ keyPassword=******
 ### 发布检查
 1. 更新 `README.md` 的功能、限制与测试覆盖。
 2. 更新 `SECURITY.md`（安全相关改动）。
-3. 更新 `docs/RELEASE_NOTES_v1.0.0.md`（用户可见改动、产物、签名指纹）。
+3. 更新 `docs/RELEASE_NOTES_v1.0.1.md`（用户可见改动、产物、签名指纹）。
 4. 更新 `THIRD_PARTY_NOTICES.md`（新增依赖/参考项目）。
 5. 更新截图（UI 改动）。
 6. 确认 `git status` 不包含密钥、APK、日志、数据库。
@@ -208,7 +204,7 @@ keyPassword=******
 - API Key：新增加解密逻辑时保持存储格式稳定，避免已有数据无法读取。
 - **审批语义**：当前“本会话始终允许”对 Shell/删除仍有效；改语义前先确认产品决策。
 - 工作区路径：数据库中的外部路径需要校验存在性与边界。
-- **响应大小**：模型、MCP、网页请求都要有超时与上限，避免 OOM/卡死。
+- **网络请求**：设置超时与错误处理，避免长时间卡住。
 
 ## 8. 文档同步清单
 
@@ -216,7 +212,7 @@ keyPassword=******
 
 - `README.md`：功能、构建、测试、限制、用法
 - `SECURITY.md`：安全设计、已知风险、报告渠道
-- `docs/RELEASE_NOTES_v1.0.0.md`：版本说明与产物
+- `docs/RELEASE_NOTES_v1.0.1.md`：版本说明与产物
 - `THIRD_PARTY_NOTICES.md`：依赖与参考项目
 - `AGENTS.md`：开发流程、约束、命令
 - `docs/screenshots/`：UI 变化

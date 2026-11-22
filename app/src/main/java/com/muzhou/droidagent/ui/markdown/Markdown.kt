@@ -380,15 +380,6 @@ private fun CodeBlock(language: String, code: String) {
     }
 }
 
-/** 只允许外部浏览器/邮件链接，避免模型输出触发任意 Intent scheme。 */
-private fun isSafeExternalLink(url: String): Boolean {
-    val trimmed = url.trim()
-    if (trimmed.isEmpty()) return false
-    val scheme = trimmed.substringBefore(':', "").lowercase()
-    if (scheme.isEmpty()) return false
-    return scheme == "http" || scheme == "https" || scheme == "mailto"
-}
-
 @Composable
 fun InlineMarkdownText(
     text: String,
@@ -407,9 +398,7 @@ fun InlineMarkdownText(
                 val result = layout ?: return@detectTapGestures
                 val offset = result.getOffsetForPosition(position)
                 annotated.getStringAnnotations("URL", offset, offset).firstOrNull()?.let { annotation ->
-                    if (isSafeExternalLink(annotation.item)) {
-                        runCatching { uriHandler.openUri(annotation.item) }
-                    }
+                    runCatching { uriHandler.openUri(annotation.item) }
                 }
             }
         },

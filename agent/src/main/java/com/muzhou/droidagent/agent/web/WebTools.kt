@@ -15,7 +15,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.jsoup.Jsoup
-import java.net.InetAddress
 import java.net.URLDecoder
 import java.util.concurrent.TimeUnit
 
@@ -49,7 +48,7 @@ class WebTools(
                 val location = response.header("Location")
                 response.close()
                 if (location.isNullOrBlank()) throw ToolException("网页重定向缺少 Location")
-                if (++redirects > 5) throw ToolException("网页重定向次数过多")
+                if (++redirects > 20) throw ToolException("网页重定向次数过多")
                 val next = current.resolve(location) ?: throw ToolException("无效的重定向地址")
                 current = validateUrl(next.toString())
                 continue
@@ -57,7 +56,7 @@ class WebTools(
             response.use { resp ->
                 if (!resp.isSuccessful) throw ToolException("网页请求失败：HTTP ${resp.code}")
                 val contentType = resp.header("Content-Type").orEmpty().lowercase()
-                val body = resp.peekBody(3L * 1024 * 1024).string()
+                val body = resp.peekBody(10L * 1024 * 1024).string()
                 return@withContext when {
                     contentType.contains("text/html") || contentType.contains("application/xhtml") ||
                         contentType.contains("application/xml") || contentType.contains("text/xml") -> {
@@ -171,61 +170,10 @@ class WebTools(
     private fun validateUrl(raw: String): okhttp3.HttpUrl {
         val url = raw.trim().toHttpUrlOrNull() ?: throw ToolException("无效的 URL：$raw")
         if (url.scheme != "http" && url.scheme != "https") throw ToolException("仅支持 http/https URL")
-        val host = url.host
-        if (host.equals("localhost", true) || host.endsWith(".local", true)) {
-            throw ToolException("出于安全原因，禁止访问本机/内网地址")
-        }
-        val addresses = try {
-            InetAddress.getAllByName(host)
-        } catch (e: Exception) {
-            throw ToolException("无法解析域名：$host")
-        }
-        if (addresses.any(WebTools::isBlockedAddress)) {
-            throw ToolException("出于安全原因，禁止访问本机/内网地址")
-        }
         return url
     }
 
     companion object {
-        /** 拒绝回环、内网、链路本地、组播、CGNAT、保留及 IPv6 ULA/映射地址。 */
-        private fun isBlockedAddress(address: InetAddress): Boolean {
-            if (address.isLoopbackAddress || address.isSiteLocalAddress ||
-                address.isLinkLocalAddress || address.isAnyLocalAddress || address.isMulticastAddress
-            ) {
-                return true
-            }
-            val bytes = address.address
-            if (bytes.size == 16) {
-                if ((bytes[0].toInt() and 0xfe) == 0xfc) return true
-                val mapped = bytes.copyOfRange(12, 16)
-                if (bytes.copyOfRange(0, 10).all { it == 0.toByte() } &&
-                    bytes[10] == 0xff.toByte() && bytes[11] == 0xff.toByte()
-                ) {
-                    return isBlockedIpv4(mapped)
-                }
-                return false
-            }
-            return isBlockedIpv4(bytes)
-        }
-
-        private fun isBlockedIpv4(bytes: ByteArray): Boolean {
-            val first = bytes[0].toInt() and 0xff
-            val second = bytes[1].toInt() and 0xff
-            return when {
-                first == 0 -> true
-                first == 10 -> true
-                first == 127 -> true
-                first == 169 && second == 254 -> true
-                first == 172 && second in 16..31 -> true
-                first == 192 && second == 168 -> true
-                first == 100 && second in 64..127 -> true
-                first == 192 && second == 0 -> true
-                first == 198 && second in 18..19 -> true
-                first >= 224 -> true
-                else -> false
-            }
-        }
-
         private const val USER_AGENT =
             "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Mobile Safari/537.36 DroidAgent/1.0"
 
@@ -234,15 +182,6 @@ class WebTools(
             .readTimeout(40, TimeUnit.SECONDS)
             .callTimeout(60, TimeUnit.SECONDS)
             .followRedirects(false)
-            .dns(object : okhttp3.Dns {
-                override fun lookup(hostname: String): List<InetAddress> {
-                    val resolved = InetAddress.getAllByName(hostname)
-                    if (resolved.isEmpty() || resolved.any(WebTools::isBlockedAddress)) {
-                        throw java.net.UnknownHostException("禁止访问内网地址：$hostname")
-                    }
-                    return resolved.toList()
-                }
-            })
             .build()
 
         private fun clip(text: String, maxChars: Int): String {

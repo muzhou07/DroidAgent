@@ -51,7 +51,7 @@ class WebFetchTool : AgentTool {
 
     override suspend fun execute(arguments: JsonObject, ctx: ToolContext): ToolResult {
         val url = arguments.stringArg("url")
-        val maxChars = arguments.intArg("max_chars", 12000).coerceIn(1000, 40000)
+        val maxChars = arguments.intArg("max_chars", 12000).coerceIn(1000, 200_000)
         return try {
             ToolResult(ctx.web.fetch(url, maxChars))
         } catch (e: Exception) {

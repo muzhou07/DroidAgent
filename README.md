@@ -9,6 +9,7 @@ DroidAgent 是一个运行在 Android 上的开源 AI Agent。应用使用 Kotli
 - **作者**：[muzhou07](https://github.com/muzhou07)
 - **仓库**：[muzhou07/DroidAgent](https://github.com/muzhou07/DroidAgent)
 - **包名**：`com.muzhou.droidagent`
+- **版本**：`1.0.1`
 - **系统要求**：Android 8.0（API 26）及以上
 - **许可**：MIT
 
@@ -103,8 +104,8 @@ DroidAgent 是一个运行在 Android 上的开源 AI Agent。应用使用 Kotli
   - **只读**：禁止修改与命令执行。
 - 审批面板展示命令、参数与 diff。
 - API Key、Tavily Key、自定义请求头与 MCP 请求头使用 Android Keystore（AES/GCM）加密保存；加密失败时不回退为明文。
-- `web_fetch` 禁止访问 localhost、内网与保留地址，并通过固定 DNS 解析防止 DNS rebinding；重定向逐跳校验。
-- 公网 LLM 服务强制 HTTPS；明文 HTTP 仅允许本机或局域网地址。
+- `web_fetch` 支持任意 http(s) 地址，包括 localhost、内网与保留地址。
+- 模型 Base URL 支持 HTTP 与 HTTPS。
 - 应用禁用云备份与设备迁移。
 
 ### 子代理
@@ -202,7 +203,7 @@ wsl -e bash -lc 'export JAVA_HOME=/path/to/jdk17; \
 - OpenAI 消息序列化（assistant `content: null`、工具调用）
 - 多模态消息解析
 - 系统提示词与 Token 估算
-- `web_fetch` 对 localhost、内网与非 HTTP 协议的拦截
+- `web_fetch` 对非 HTTP/HTTPS 协议的拒绝
 
 ## 使用
 
@@ -230,7 +231,9 @@ wsl -e bash -lc 'export JAVA_HOME=/path/to/jdk17; \
 - Android 自带 Shell 为 toybox，`git`、`node`、`python` 等未必存在，可通过 Termux 扩展。
 - SAF 目录只有在能映射为本地路径且已授予所有文件权限时才能使用 Shell；文件工具不受影响。
 - 图片附件需要模型支持视觉输入。
-- 为兼容本地或局域网 LLM 服务，应用允许明文 HTTP；公网服务必须使用 HTTPS。
+- 模型接口支持 HTTP 与 HTTPS；使用公网 HTTP 时 API Key 会以明文传输。
+- `web_fetch` 可访问本机与内网服务，提示注入可能诱导 Agent 读取工作区数据并外发。
+- 聊天中的链接可以触发任意 URI scheme，点击前确认来源。
 - 后台长任务受 Android 电池策略限制，建议保持前台运行。
 - Termux 需要 `allow-external-apps=true`、共享存储权限与 `RUN_COMMAND` 权限；不满足时回退到内置 Shell。
 
@@ -246,7 +249,7 @@ wsl -e bash -lc 'export JAVA_HOME=/path/to/jdk17; \
 
 - [AGENTS.md](AGENTS.md)：开发指南、代码结构、约束与发布流程。
 - [SECURITY.md](SECURITY.md)：安全策略、漏洞报告与已知风险。
-- [docs/RELEASE_NOTES_v1.0.0.md](docs/RELEASE_NOTES_v1.0.0.md)：v1.0.0 发布说明。
+- [docs/RELEASE_NOTES_v1.0.1.md](docs/RELEASE_NOTES_v1.0.1.md)：v1.0.1 发布说明。
 - [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)：第三方许可。
 
 ## 上游与致谢
