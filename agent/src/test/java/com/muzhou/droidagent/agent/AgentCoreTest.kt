@@ -106,6 +106,20 @@ class AgentCoreTest {
     }
 
     @Test
+    fun planModePromptForbidsChanges() {
+        val prompt = PromptBuilder.build(
+            settings = AgentSettings(agentMode = AgentMode.PLAN),
+            workspace = WorkspaceInfo("1", "演示", "应用私有", "/tmp", "内置 Shell", true),
+            todos = emptyList(),
+            projectRules = null,
+            mcpSummary = emptyList(),
+            depth = 0,
+        )
+        assertTrue(prompt.contains("Plan 模式"))
+        assertTrue(prompt.contains("不要修改文件"))
+    }
+
+    @Test
     fun tokenEstimatorCountsChinese() {
         assertTrue(TokenEstimator.estimateText("你好世界") >= 4)
         assertTrue(TokenEstimator.estimateText(JsonPrimitive("hello world").toString()) > 0)

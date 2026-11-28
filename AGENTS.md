@@ -6,7 +6,7 @@
 
 - **形态**：原生 Android 应用，Kotlin + Jetpack Compose，不使用 Node、WebView、React Native。
 - **包名**：`com.muzhou.droidagent`；Debug 变体为 `com.muzhou.droidagent.debug`。
-- **版本**：`1.0.1`（versionCode 2）。
+- **版本**：`1.1.0`（versionCode 3）。
 - **SDK**：`minSdk 26`、`targetSdk 35`、`compileSdk 35`。
 - **工具链**：JDK 17、Gradle 8.9、AGP 8.7.3、Kotlin 2.0.21。
 - **模块**：
@@ -32,6 +32,7 @@
 8. 底部 Sheet 使用 Material 3；弹出菜单、输入框、滑块使用 Miuix 风格。
 9. 新对话页为默认页；首条消息后由模型生成会话标题。
 10. 应用图标为蓝底白色网络节点，保留 Android 13 `monochrome` 主题图标。
+11. Plan / Action 模式：Plan 只提供只读工具与规划能力；Action 可执行完整任务。入口位于输入区思考强度左侧。
 
 ## 3. 代码地图
 
@@ -58,7 +59,7 @@ app/src/main/java/com/muzhou/droidagent/
 
 ### 关键数据
 
-- DataStore：`droidagent_settings`，包含 `api_key`、`tavily_key`、`extra_headers`、`last_workspace_id` 等。
+- DataStore：`droidagent_settings`，包含 `api_key`、`tavily_key`、`extra_headers`、`agent_mode`、`last_workspace_id` 等。
 - SQLite：`droidagent.db`，当前 `DB_VERSION = 3`，启用 WAL。
 - 表：`sessions`、`messages`、`workspaces`、`mcp_servers`。
 - 密钥：`SecretCrypto` 使用 Android Keystore（AES/GCM，别名 `droidagent_secret_key_v1`），存储格式 `v1:<Base64(IV+密文)>`。
@@ -107,7 +108,9 @@ app/src/main/java/com/muzhou/droidagent/
 
 ### Web
 - `WebTools` 负责搜索与抓取。
+- 搜索优先 Tavily；未配置 Key 时回退 Bing 与 DuckDuckGo。
 - `web_fetch` 支持任意 http(s) 地址，包括本机、内网与保留地址。
+- 抓取使用桌面/移动 UA 重试，支持重定向、编码识别与正文提取。
 
 ## 5. 修改代码的规则
 
@@ -189,7 +192,7 @@ keyPassword=******
 ### 发布检查
 1. 更新 `README.md` 的功能、限制与测试覆盖。
 2. 更新 `SECURITY.md`（安全相关改动）。
-3. 更新 `docs/RELEASE_NOTES_v1.0.1.md`（用户可见改动、产物、签名指纹）。
+3. 更新 `docs/RELEASE_NOTES_v1.1.0.md`（用户可见改动、产物、签名指纹）。
 4. 更新 `THIRD_PARTY_NOTICES.md`（新增依赖/参考项目）。
 5. 更新截图（UI 改动）。
 6. 确认 `git status` 不包含密钥、APK、日志、数据库。
@@ -212,7 +215,7 @@ keyPassword=******
 
 - `README.md`：功能、构建、测试、限制、用法
 - `SECURITY.md`：安全设计、已知风险、报告渠道
-- `docs/RELEASE_NOTES_v1.0.1.md`：版本说明与产物
+- `docs/RELEASE_NOTES_v1.1.0.md`：版本说明与产物
 - `THIRD_PARTY_NOTICES.md`：依赖与参考项目
 - `AGENTS.md`：开发流程、约束、命令
 - `docs/screenshots/`：UI 变化

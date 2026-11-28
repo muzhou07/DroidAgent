@@ -19,6 +19,13 @@
 - MCP 支持任意大小响应、SSE 流式响应与重定向。
 - `web_fetch` 正文读取上限为 10MB，`max_chars` 上限为 200,000。
 - Markdown 外链支持任意 URI scheme。
+- 网页搜索支持 Tavily → Bing → DuckDuckGo 回退；网页抓取增加 UA 重试、编码识别、正文提取与内容类型兼容。
+- 输入区新增 Plan / Action 模式切换，图标位于思考强度左侧；设置 → Agent 设置也可切换。Plan 只分析与规划，不修改文件或执行命令。
+- 关于页版本支持检查 GitHub 最新 Release；发现新版本时从屏幕底部弹出更新说明与下载入口。
+- 设置弹窗（MIT License、添加/编辑 MCP、发现新版本）改为标题居中、正文滚动、按钮固定的窗口式弹窗，始终位于系统手势条上方。
+- 新增 MCP 服务器默认启用，表单移除右上角关闭按钮与启用开关。
+- 思考与工具执行卡片统一为单行：工具名旁直接显示命令、路径等具体内容，右侧保留执行状态图标。
+- 上下文压缩后仅在会话中显示一行“上下文已压缩”，不再展示摘要正文。
 
 这些地址由模型或用户配置直接访问，请只在可信工作区中使用。提示注入可能诱导 Agent 读取工作区文件并发送到外部服务。
 
@@ -45,7 +52,7 @@
 
 - Debug APK：`app/build/outputs/apk/debug/app-debug.apk`
 - Release APK（已签名）：`app/build/outputs/apk/release/app-release.apk`
-- APK SHA-256：`63CE5A3068B7B3717FEB19BBFBF600D1937F50F8F84C0FA9BFD6713477D4DEEB`
+- APK SHA-256：`C7018B09C7E9B144C0BF92879383E467C1F8B24CB58C82A52AECDECF2146989A`
 - 签名：APK Signature Scheme v2，别名 `droidagent`，RSA 4096
 - 证书 SHA-256：`97:A4:5A:D3:67:77:DF:BA:54:2D:6A:36:E7:9D:56:84:9D:76:CC:72:29:27:77:34:D1:1A:86:D6:F7:BD:A6:F2`
 - 发布页：<https://github.com/muzhou07/DroidAgent/releases>

@@ -128,6 +128,7 @@ fun DroidAgentRoot(container: AppContainer) {
                         onApprove = { decision -> chatViewModel.resolveApproval(decision) },
                         onRegenerate = { chatViewModel.regenerate() },
                         onReasoningEffortChange = { chatViewModel.setReasoningEffort(it) },
+                        onAgentModeChange = { chatViewModel.setAgentMode(it) },
                         onOpenModelSettings = { navController.navigate("settings?page=model") },
                     )
                 }

@@ -40,7 +40,7 @@ sealed interface AgentEvent {
         val totalTokens: Int,
         val windowTokens: Int,
     ) : AgentEvent
-    data class Compaction(val summary: String) : AgentEvent
+    data object Compaction : AgentEvent
     data class Error(val message: String, val fatal: Boolean = true) : AgentEvent
     data object Cancelled : AgentEvent
     data object Finished : AgentEvent

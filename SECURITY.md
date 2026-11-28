@@ -6,7 +6,7 @@ DroidAgent 是一个可以读写工作区、执行 Shell 并调用外部 MCP 服
 - 仓库：<https://github.com/muzhou07/DroidAgent>
 
 ## 支持的版本
-仅对最新发布版本提供安全修复，当前为 `v1.0.1`。
+仅对最新发布版本提供安全修复，当前为 `v1.1.0`。
 
 ## 报告漏洞
 优先使用 GitHub 私有漏洞报告：

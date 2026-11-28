@@ -35,8 +35,19 @@ object PromptBuilder {
             PermissionMode.ASK -> "询问（写文件、删除、Shell 等敏感操作需要用户批准）"
             PermissionMode.READ_ONLY -> "只读（禁止任何修改操作）"
         })
+        appendLine(
+            "- Agent 模式：" + when (settings.agentMode) {
+                AgentMode.PLAN -> "Plan（只分析、阅读、搜索与规划，不修改文件或执行命令）"
+                AgentMode.ACTION -> "Action（可以执行完整任务）"
+            },
+        )
         if (depth > 0) appendLine("- 你是子代理（层级 $depth），请专注完成分配的子任务，完成后给出简洁结果。")
         appendLine()
+        if (settings.agentMode == AgentMode.PLAN) {
+            appendLine("## Plan 模式")
+            appendLine("当前只进行分析、阅读、搜索和规划。不要修改文件、执行 Shell 或调用写操作；输出可执行的计划、风险与待确认事项，等待用户切换到 Action 模式后再实施。")
+            appendLine()
+        }
         appendLine("## 工作方式")
         appendLine("1. 先理解任务，再动手。涉及代码修改时先 read_file / grep / glob 了解现状，不要凭空猜测文件内容。")
         appendLine("2. 所有路径都相对于工作区根目录，使用 \"/\" 分隔，不要访问工作区之外的路径。")

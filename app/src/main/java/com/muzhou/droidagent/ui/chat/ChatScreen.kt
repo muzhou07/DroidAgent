@@ -1,6 +1,7 @@
 package com.muzhou.droidagent.ui.chat
 
 import com.muzhou.droidagent.agent.AgentEvent
+import com.muzhou.droidagent.agent.AgentMode
 import com.muzhou.droidagent.agent.ReasoningEffort
 import com.muzhou.droidagent.agent.llm.Usage
 import com.muzhou.droidagent.ui.components.MiuixDropdownMenu
@@ -60,6 +61,7 @@ import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.RadioButtonChecked
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material.icons.outlined.Refresh
@@ -109,6 +111,7 @@ fun ChatScreen(
     onApprove: (com.muzhou.droidagent.agent.tool.ApprovalDecision) -> Unit,
     onRegenerate: () -> Unit,
     onReasoningEffortChange: (ReasoningEffort) -> Unit,
+    onAgentModeChange: (AgentMode) -> Unit,
     onOpenModelSettings: () -> Unit,
 ) {
     val colors = DsTheme.colors
@@ -389,6 +392,8 @@ fun ChatScreen(
                 isRunning = state.isRunning,
                 reasoningEffort = state.settings.reasoningEffort,
                 onReasoningEffortChange = onReasoningEffortChange,
+                agentMode = state.settings.agentMode,
+                onAgentModeChange = onAgentModeChange,
                 stats = sessionStats,
                 onOpenStats = { showSessionStats = true },
                 modifier = Modifier.navigationBarsPadding(),
@@ -723,9 +728,17 @@ private fun ReasoningBlock(
             .padding(horizontal = 10.dp, vertical = 7.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Outlined.Psychology,
+                contentDescription = null,
+                tint = colors.textTertiary,
+                modifier = Modifier.size(15.dp),
+            )
+            Spacer(Modifier.width(7.dp))
             Text(
                 text = if (expanded) "思考过程" else "思考",
                 fontSize = 12.sp,
+                lineHeight = 16.sp,
                 color = colors.textTertiary,
                 modifier = Modifier.weight(1f),
             )

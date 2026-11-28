@@ -1,5 +1,6 @@
 package com.muzhou.droidagent.ui.chat
 
+import com.muzhou.droidagent.agent.AgentMode
 import com.muzhou.droidagent.agent.ReasoningEffort
 import com.muzhou.droidagent.ui.components.MiuixDropdownMenu
 import com.muzhou.droidagent.ui.components.MiuixMenuItem
@@ -26,12 +27,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Storage
@@ -66,6 +69,8 @@ fun Composer(
     isRunning: Boolean,
     reasoningEffort: ReasoningEffort,
     onReasoningEffortChange: (ReasoningEffort) -> Unit,
+    agentMode: AgentMode,
+    onAgentModeChange: (AgentMode) -> Unit,
     stats: SessionStatsData,
     onOpenStats: () -> Unit,
     modifier: Modifier = Modifier,
@@ -144,6 +149,16 @@ fun Composer(
                         )
                     }
                     Spacer(Modifier.weight(1f))
+                    AgentModeButton(
+                        mode = agentMode,
+                        enabled = !isRunning,
+                        onToggle = {
+                            onAgentModeChange(
+                                if (agentMode == AgentMode.PLAN) AgentMode.ACTION else AgentMode.PLAN,
+                            )
+                        },
+                    )
+                    Spacer(Modifier.width(2.dp))
                     ReasoningChip(
                         effort = reasoningEffort,
                         enabled = !isRunning,
@@ -248,6 +263,32 @@ fun Composer(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun AgentModeButton(
+    mode: AgentMode,
+    enabled: Boolean,
+    onToggle: () -> Unit,
+) {
+    val colors = DsTheme.colors
+    val plan = mode == AgentMode.PLAN
+    IconButton(
+        onClick = onToggle,
+        enabled = enabled,
+        modifier = Modifier.size(32.dp),
+    ) {
+        Icon(
+            if (plan) Icons.Outlined.Map else Icons.Filled.PlayArrow,
+            contentDescription = if (plan) {
+                "Plan 模式，点击切换到 Action"
+            } else {
+                "Action 模式，点击切换到 Plan"
+            },
+            tint = if (enabled) colors.textSecondary else colors.textTertiary,
+            modifier = Modifier.size(19.dp),
+        )
     }
 }
 

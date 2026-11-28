@@ -13,7 +13,6 @@ import com.muzhou.droidagent.agent.tool.ToolContext
 import com.muzhou.droidagent.agent.tool.ToolRegistry
 import com.muzhou.droidagent.agent.tool.ToolResult
 import com.muzhou.droidagent.agent.util.AgentJson
-import com.muzhou.droidagent.agent.util.oneLine
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.TimeoutCancellationException
@@ -249,6 +248,12 @@ class AgentLoop(
     private suspend fun executeTool(call: ToolCall, args: JsonObject): ToolResult {
         val tool = registry.find(call.function.name)
             ?: return ToolResult("未知工具：${call.function.name}", isError = true)
+        if (toolContext.settings.agentMode == AgentMode.PLAN && tool.mutating) {
+            return ToolResult(
+                "当前为 Plan 模式，不能执行修改或命令操作：${tool.name}。请先给出计划，等待切换到 Action 模式。",
+                isError = true,
+            )
+        }
         if (tool.mutating) {
             when (toolContext.settings.permissionMode) {
                 PermissionMode.READ_ONLY -> return ToolResult(
@@ -371,6 +376,6 @@ class AgentLoop(
                 "[上下文压缩摘要]\n$summaryText\n\n（以上为历史对话摘要，后续请基于工作区真实文件继续工作。）",
             ),
         )
-        eventSink(AgentEvent.Compaction(summaryText.oneLine(500)))
+        eventSink(AgentEvent.Compaction)
     }
 }

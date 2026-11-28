@@ -9,7 +9,7 @@ DroidAgent 是一个运行在 Android 上的开源 AI Agent。应用使用 Kotli
 - **作者**：[muzhou07](https://github.com/muzhou07)
 - **仓库**：[muzhou07/DroidAgent](https://github.com/muzhou07/DroidAgent)
 - **包名**：`com.muzhou.droidagent`
-- **版本**：`1.0.1`
+- **版本**：`1.1.0`
 - **系统要求**：Android 8.0（API 26）及以上
 - **许可**：MIT
 
@@ -38,16 +38,19 @@ DroidAgent 是一个运行在 Android 上的开源 AI Agent。应用使用 Kotli
 - 工具调用多轮循环，自动累积流式工具参数。
 - 重新生成、停止生成、复制回答。
 - 思考强度 None / Low / High / Max（默认 High），可在设置与输入区切换，通过 `reasoning_effort` 发送。
+- Plan / Action 模式切换：Plan 只进行分析、阅读、搜索与规划，Action 执行完整任务；输入区图标位于思考强度左侧，设置 → Agent 设置中也可切换。
 - 思考过程自动折叠，仅展开当前推理。
 - 请求失败时在会话内显示红色错误消息，并持久化到历史；错误不会发送给模型。
 - 请求超时与 12 分钟无活动自动停止，避免长任务卡死。
 - 每轮显示 Token 与耗时；输入框下方显示轮数、步数、tok/s、缓存命中与上下文占用。
 - 附件支持图片（data URL）与文本/代码文件。
+- 网页搜索优先 Tavily，未配置 Key 时回退 Bing / DuckDuckGo；网页抓取支持重试、重定向、编码识别与正文提取。
 - Markdown 渲染支持标题、列表、引用、表格、链接、行内代码与代码高亮。
 - 接近上下文窗口时自动生成摘要，保留最近消息。
 - 长会话使用 SQLite WAL、事务写入与后台建项；冷启动无需逐会话统计。
 - 向上翻阅历史时显示“回到底部”按钮。
 - 深色、浅色、跟随系统主题；设置项实时保存。
+- 关于页版本可检查 GitHub 最新 Release，发现新版本时从底部弹出更新提示。
 
 ### Agent 工具
 
@@ -249,7 +252,7 @@ wsl -e bash -lc 'export JAVA_HOME=/path/to/jdk17; \
 
 - [AGENTS.md](AGENTS.md)：开发指南、代码结构、约束与发布流程。
 - [SECURITY.md](SECURITY.md)：安全策略、漏洞报告与已知风险。
-- [docs/RELEASE_NOTES_v1.0.1.md](docs/RELEASE_NOTES_v1.0.1.md)：v1.0.1 发布说明。
+- [docs/RELEASE_NOTES_v1.1.0.md](docs/RELEASE_NOTES_v1.1.0.md)：v1.1.0 发布说明。
 - [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)：第三方许可。
 
 ## 上游与致谢

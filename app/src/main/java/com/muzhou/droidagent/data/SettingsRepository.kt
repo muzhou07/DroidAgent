@@ -1,6 +1,7 @@
 package com.muzhou.droidagent.data
 
 import com.muzhou.droidagent.agent.AgentSettings
+import com.muzhou.droidagent.agent.AgentMode
 import com.muzhou.droidagent.agent.PermissionMode
 import com.muzhou.droidagent.agent.ReasoningEffort
 import android.content.Context
@@ -34,6 +35,7 @@ data class AppSettings(
     val baseUrl: String = "https://api.deepseek.com/v1",
     val apiKey: String = "",
     val model: String = "deepseek-flash",
+    val agentMode: AgentMode = AgentMode.ACTION,
     val reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH,
     val temperature: Double = 0.7,
     val maxTokens: Int = 0,
@@ -50,6 +52,7 @@ data class AppSettings(
         baseUrl = baseUrl,
         apiKey = apiKey,
         model = model,
+        agentMode = agentMode,
         reasoningEffort = reasoningEffort,
         temperature = temperature,
         maxTokens = maxTokens.takeIf { it > 0 },
@@ -73,6 +76,7 @@ class SettingsRepository(
         val baseUrl = stringPreferencesKey("base_url")
         val apiKey = stringPreferencesKey("api_key")
         val model = stringPreferencesKey("model")
+        val agentMode = stringPreferencesKey("agent_mode")
         val reasoningEffort = stringPreferencesKey("reasoning_effort")
         val temperature = doublePreferencesKey("temperature")
         val maxTokens = intPreferencesKey("max_tokens")
@@ -92,6 +96,9 @@ class SettingsRepository(
             baseUrl = prefs[Keys.baseUrl] ?: "https://api.deepseek.com/v1",
             apiKey = SecretCrypto.decrypt(prefs[Keys.apiKey].orEmpty()),
             model = prefs[Keys.model] ?: "deepseek-flash",
+            agentMode = runCatching {
+                AgentMode.valueOf(prefs[Keys.agentMode] ?: AgentMode.ACTION.name)
+            }.getOrDefault(AgentMode.ACTION),
             reasoningEffort = runCatching {
                 ReasoningEffort.valueOf(prefs[Keys.reasoningEffort] ?: ReasoningEffort.HIGH.name)
             }.getOrDefault(ReasoningEffort.HIGH),
@@ -117,6 +124,7 @@ class SettingsRepository(
             prefs[Keys.baseUrl] = settings.baseUrl.trim()
             storeSecret(prefs, Keys.apiKey, settings.apiKey.trim())
             prefs[Keys.model] = settings.model.trim()
+            prefs[Keys.agentMode] = settings.agentMode.name
             prefs[Keys.reasoningEffort] = settings.reasoningEffort.name
             prefs[Keys.temperature] = settings.temperature
             prefs[Keys.maxTokens] = settings.maxTokens

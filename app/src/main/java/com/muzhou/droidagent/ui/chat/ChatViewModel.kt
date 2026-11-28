@@ -1,6 +1,7 @@
 package com.muzhou.droidagent.ui.chat
 
 import com.muzhou.droidagent.agent.AgentEvent
+import com.muzhou.droidagent.agent.AgentMode
 import com.muzhou.droidagent.agent.CommittedMessage
 import com.muzhou.droidagent.agent.ReasoningEffort
 import com.muzhou.droidagent.agent.TodoItem
@@ -9,7 +10,6 @@ import com.muzhou.droidagent.agent.mcp.McpManager
 import com.muzhou.droidagent.agent.tool.ApprovalDecision
 import com.muzhou.droidagent.agent.tool.ApprovalHandler
 import com.muzhou.droidagent.agent.tool.ApprovalRequest
-import com.muzhou.droidagent.agent.util.oneLine
 import com.muzhou.droidagent.agent.workspace.Workspace
 import com.muzhou.droidagent.agent.workspace.WorkspaceFactory
 import com.muzhou.droidagent.agent.workspace.WorkspaceKind
@@ -370,6 +370,14 @@ class ChatViewModel(
         approvalDeferred = null
         _state.update { it.copy(pendingApproval = null) }
         runningJob?.cancel()
+    }
+
+    fun setAgentMode(mode: AgentMode) {
+        val current = _state.value.settings
+        if (current.agentMode == mode) return
+        val next = current.copy(agentMode = mode)
+        _state.update { it.copy(settings = next) }
+        viewModelScope.launch { container.settings.save(next) }
     }
 
     fun setReasoningEffort(effort: ReasoningEffort) {
@@ -817,7 +825,7 @@ class ChatViewModel(
                 if (event.isError) "子代理失败：${event.description}" else "子代理完成：${event.description}",
                 error = event.isError,
             )
-            is AgentEvent.Compaction -> addNote("上下文已压缩：${event.summary}")
+            is AgentEvent.Compaction -> addNoteOnce("上下文已压缩")
             is AgentEvent.Error -> {
                 flushStreams()
                 addNote(event.message, error = true)
@@ -953,6 +961,12 @@ class ChatViewModel(
         _state.update {
             it.copy(items = it.items + ChatItem.Note("note_" + UUID.randomUUID().toString().take(8), text, error))
         }
+    }
+
+    /** 与上一条提示相同时不重复追加，避免连续压缩产生大量同文案条目。 */
+    private fun addNoteOnce(text: String) {
+        if ((_state.value.items.lastOrNull() as? ChatItem.Note)?.text == text) return
+        addNote(text)
     }
 
     private fun persistNote(text: String, error: Boolean) {

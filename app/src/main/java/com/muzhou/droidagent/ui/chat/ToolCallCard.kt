@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.serialization.json.Json
@@ -73,9 +74,9 @@ fun ToolCallCard(call: UiToolCall) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(9.dp))
+            .clip(RoundedCornerShape(8.dp))
             .background(colors.layer)
-            .border(1.dp, borderColor, RoundedCornerShape(9.dp)),
+            .border(1.dp, borderColor, RoundedCornerShape(8.dp)),
     ) {
         Row(
             modifier = Modifier
@@ -86,22 +87,27 @@ fun ToolCallCard(call: UiToolCall) {
         ) {
             Icon(icon, contentDescription = null, tint = colors.textTertiary, modifier = Modifier.size(15.dp))
             Spacer(Modifier.width(7.dp))
-            Column(Modifier.weight(1f)) {
+            Text(
+                text = displayName(call.name),
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = colors.textPrimary,
+                maxLines = 1,
+            )
+            if (subtitle.isNotBlank()) {
+                Spacer(Modifier.width(6.dp))
                 Text(
-                    text = displayName(call.name),
-                    fontSize = 12.5.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = colors.textPrimary,
+                    text = subtitle,
+                    fontSize = 11.sp,
+                    lineHeight = 16.sp,
+                    color = colors.textTertiary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
                 )
-                if (subtitle.isNotBlank()) {
-                    Text(
-                        text = subtitle,
-                        fontSize = 10.5.sp,
-                        lineHeight = 14.sp,
-                        color = colors.textTertiary,
-                        maxLines = 2,
-                    )
-                }
+            } else {
+                Spacer(Modifier.weight(1f))
             }
             Spacer(Modifier.width(6.dp))
             ToolStatusView(call.status)

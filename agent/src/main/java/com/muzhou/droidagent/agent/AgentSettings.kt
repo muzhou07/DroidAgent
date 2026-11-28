@@ -5,6 +5,11 @@ import kotlinx.serialization.Serializable
 
 enum class PermissionMode { ASK, AUTO, READ_ONLY }
 
+enum class AgentMode(val label: String) {
+    PLAN("Plan"),
+    ACTION("Action"),
+}
+
 enum class ReasoningEffort(val apiValue: String, val label: String) {
     NONE("none", "None"),
     LOW("low", "Low"),
@@ -16,6 +21,7 @@ data class AgentSettings(
     val baseUrl: String = "https://api.deepseek.com/v1",
     val apiKey: String = "",
     val model: String = "deepseek-flash",
+    val agentMode: AgentMode = AgentMode.ACTION,
     val reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH,
     val temperature: Double? = 0.7,
     val maxTokens: Int? = null,

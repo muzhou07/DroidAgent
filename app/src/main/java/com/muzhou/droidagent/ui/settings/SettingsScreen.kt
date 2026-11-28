@@ -1,14 +1,18 @@
 package com.muzhou.droidagent.ui.settings
 
 import com.muzhou.droidagent.BuildConfig
+import com.muzhou.droidagent.agent.AgentMode
 import com.muzhou.droidagent.agent.PermissionMode
 import com.muzhou.droidagent.agent.ReasoningEffort
 import com.muzhou.droidagent.agent.mcp.McpServerConfig
 import com.muzhou.droidagent.agent.mcp.McpServerState
 import com.muzhou.droidagent.data.AppSettings
 import com.muzhou.droidagent.data.ThemeMode
+import com.muzhou.droidagent.data.UpdateChecker
+import com.muzhou.droidagent.data.UpdateInfo
 import com.muzhou.droidagent.ui.components.MiuixSlider
 import com.muzhou.droidagent.ui.components.MiuixTextField
+import com.muzhou.droidagent.ui.components.MiuixWindowDialog
 import com.muzhou.droidagent.ui.theme.DsTheme
 import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
@@ -64,7 +68,9 @@ import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Link
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Tune
@@ -102,8 +108,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun SettingsScreen(
@@ -124,6 +132,8 @@ fun SettingsScreen(
     var editingServer by remember { mutableStateOf<McpServerConfig?>(null) }
     var addServer by remember { mutableStateOf(false) }
     var showLicense by remember { mutableStateOf(false) }
+    var checkingUpdate by remember { mutableStateOf(false) }
+    var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
     var deleteTarget by remember { mutableStateOf<McpServerConfig?>(null) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -164,6 +174,27 @@ fun SettingsScreen(
     }
     BackHandler { goBack() }
 
+    fun checkUpdate() {
+        if (checkingUpdate) return
+        checkingUpdate = true
+        scope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) { UpdateChecker.latest(BuildConfig.VERSION_NAME) }
+            }
+            checkingUpdate = false
+            if (result.isSuccess) {
+                val info = result.getOrNull()
+                if (info == null) {
+                    snackbar.showSnackbar("已是最新版本")
+                } else {
+                    updateInfo = info
+                }
+            } else {
+                snackbar.showSnackbar("检查更新失败：${result.exceptionOrNull()?.message.orEmpty()}")
+            }
+        }
+    }
+
     val pageBackground = if (colors.dark) colors.background else Color(0xFFF2F3F5)
 
     Box(
@@ -199,7 +230,6 @@ fun SettingsScreen(
                     when (current) {
                     SettingsPage.HOME -> SettingsHome(
                         model = draft.model,
-                        permission = permissionLabel(draft.permissionMode),
                         mcpSummary = "${servers.count { it.enabled }} 个已启用",
                         theme = themeLabel(draft.theme),
                         version = "v${BuildConfig.VERSION_NAME}",
@@ -252,6 +282,8 @@ fun SettingsScreen(
                     SettingsPage.ABOUT -> AboutSettingsPage(
                         onShowLicense = { showLicense = true },
                         onOpenUrl = { uriHandler.openUri(it) },
+                        checkingUpdate = checkingUpdate,
+                        onCheckUpdate = { checkUpdate() },
                     )
                 }
             }
@@ -298,35 +330,77 @@ fun SettingsScreen(
     }
 
     if (showLicense) {
-        AlertDialog(
+        MiuixWindowDialog(
+            title = "MIT License",
             onDismissRequest = { showLicense = false },
-            title = { Text("MIT License") },
-            text = {
-                Column(
-                    Modifier
-                        .height(420.dp)
-                        .verticalScroll(rememberScrollState()),
-                ) {
-                    Text(
-                        LICENSE_TEXT,
-                        fontSize = 10.5.sp,
-                        lineHeight = 16.sp,
-                        fontFamily = FontFamily.Monospace,
-                        color = colors.textSecondary,
-                    )
-                }
+            dismissText = null,
+            confirmText = "关闭",
+            onConfirm = { showLicense = false },
+        ) {
+            Text(
+                LICENSE_TEXT,
+                fontSize = 10.5.sp,
+                lineHeight = 16.sp,
+                fontFamily = FontFamily.Monospace,
+                color = colors.textSecondary,
+            )
+        }
+    }
+
+    updateInfo?.let { info ->
+        MiuixWindowDialog(
+            title = "发现新版本",
+            onDismissRequest = { updateInfo = null },
+            dismissText = "稍后",
+            confirmText = "前往下载",
+            onConfirm = {
+                runCatching { uriHandler.openUri(info.pageUrl) }
+                updateInfo = null
             },
-            confirmButton = {
-                TextButton(onClick = { showLicense = false }) { Text("关闭") }
-            },
-        )
+        ) {
+            Text(
+                "v${info.version}",
+                fontSize = 26.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.brand,
+            )
+            Text(
+                "当前版本 v${BuildConfig.VERSION_NAME.substringBefore('-')}",
+                fontSize = 11.sp,
+                color = colors.textTertiary,
+            )
+            val title = info.title.trim()
+            val redundantTitle = title.equals(info.version, ignoreCase = true) ||
+                title.equals("v${info.version}", ignoreCase = true)
+            if (title.isNotBlank() && !redundantTitle) {
+                Spacer(Modifier.size(8.dp))
+                Text(
+                    title,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = colors.textPrimary,
+                )
+            }
+            Spacer(Modifier.size(10.dp))
+            val notes = info.notes
+                .replace("**", "")
+                .replace("`", "")
+                .replace(Regex("(?m)^#{1,6}\\s*"), "")
+                .trim()
+            Text(
+                notes.ifBlank { "暂无更新说明" },
+                fontSize = 11.5.sp,
+                lineHeight = 18.sp,
+                color = colors.textSecondary,
+            )
+        }
     }
 }
 
 private enum class SettingsPage(val title: String) {
     HOME("设置"),
     MODEL("模型与 API"),
-    PERMISSION("权限与工具"),
+    PERMISSION("Agent 设置"),
     MCP("MCP 服务器"),
     APPEARANCE("外观"),
     ABOUT("关于"),
@@ -380,7 +454,6 @@ private fun SettingsTopBar(title: String, onBack: () -> Unit) {
 @Composable
 private fun SettingsHome(
     model: String,
-    permission: String,
     mcpSummary: String,
     theme: String,
     version: String,
@@ -402,7 +475,7 @@ private fun SettingsHome(
         }
         SectionLabel("Agent")
         SettingsGroup {
-            SettingsNavRow(Icons.Outlined.Lock, "权限与工具", permission) {
+            SettingsNavRow(Icons.Outlined.Lock, "Agent 设置", "") {
                 onOpen(SettingsPage.PERMISSION)
             }
             SettingsNavRow(Icons.Outlined.Extension, "MCP 服务器", mcpSummary) {
@@ -455,7 +528,7 @@ private fun ModelSettingsPage(
                 label = "API Key",
                 value = draft.apiKey,
                 onValueChange = { onChange(draft.copy(apiKey = it)) },
-                placeholder = "sk-…（留空表示无需鉴权）",
+                placeholder = "sk-…",
                 visualTransformation = if (showApiKey) VisualTransformation.None else PasswordVisualTransformation(),
                 trailing = {
                     IconButton(onClick = onToggleApiKey) {
@@ -562,7 +635,7 @@ private fun ModelSettingsPage(
                     modifier = Modifier.padding(vertical = 4.dp),
                 )
                 SettingsField(
-                    label = "最大输出 tokens（0 = 模型默认）",
+                    label = "最大输出 tokens",
                     value = draft.maxTokens.toString(),
                     onValueChange = { onChange(draft.copy(maxTokens = it.toIntOrNull() ?: 0)) },
                     keyboardType = KeyboardType.Number,
@@ -605,7 +678,17 @@ private fun PermissionSettingsPage(
             .padding(horizontal = 16.dp)
             .padding(bottom = 28.dp),
     ) {
-        SectionLabel("权限模式")
+        SectionLabel("Agent 模式")
+        SettingsGroup(padding = 6.dp) {
+            AgentMode.entries.forEach { mode ->
+                AgentModeRow(
+                    mode = mode,
+                    selected = draft.agentMode == mode,
+                    onClick = { onChange(draft.copy(agentMode = mode)) },
+                )
+            }
+        }
+        SectionLabel("权限")
         SettingsGroup(padding = 6.dp) {
             PermissionMode.entries.forEach { mode ->
                 PermissionRow(
@@ -614,39 +697,41 @@ private fun PermissionSettingsPage(
                     onClick = { onChange(draft.copy(permissionMode = mode)) },
                 )
             }
-        }
-        SectionLabel("Shell")
-        SettingsGroup(padding = 14.dp) {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                    .height(1.dp)
+                    .background(colors.border),
+            )
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp, vertical = 9.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column(Modifier.weight(1f)) {
-                    Text("Termux Shell", fontSize = 13.sp, color = colors.textPrimary)
-                    Text(
-                        "需 Termux 开启 allow-external-apps 并授权存储",
-                        fontSize = 10.sp,
-                        lineHeight = 14.sp,
-                        color = colors.textTertiary,
-                    )
-                }
+                Text(
+                    "Termux Shell",
+                    fontSize = 13.sp,
+                    color = colors.textPrimary,
+                    modifier = Modifier.weight(1f),
+                )
                 Switch(checked = draft.termuxEnabled, onCheckedChange = onTermuxChange)
             }
         }
-        SectionLabel("搜索与系统指令")
+        SectionLabel("搜索与指令")
         SettingsGroup(padding = 14.dp) {
             SettingsField(
-                label = "Tavily Key（可选）",
+                label = "Tavily Key",
                 value = draft.tavilyApiKey,
                 onValueChange = { onChange(draft.copy(tavilyApiKey = it.trim())) },
                 placeholder = "tvly-…",
                 visualTransformation = PasswordVisualTransformation(),
             )
             SettingsField(
-                label = "附加系统指令（可选）",
+                label = "系统附加指令",
                 value = draft.systemExtra,
                 onValueChange = { onChange(draft.copy(systemExtra = it)) },
-                placeholder = "例如：始终使用中文回答，先写测试再改代码……",
                 minLines = 3,
             )
         }
@@ -778,6 +863,8 @@ private fun AppearanceSettingsPage(
 private fun AboutSettingsPage(
     onShowLicense: () -> Unit,
     onOpenUrl: (String) -> Unit,
+    checkingUpdate: Boolean,
+    onCheckUpdate: () -> Unit,
 ) {
     val colors = DsTheme.colors
     Column(
@@ -790,7 +877,13 @@ private fun AboutSettingsPage(
     ) {
         SectionLabel("应用")
         SettingsGroup {
-            SettingsInfoRow(Icons.Outlined.Info, "版本", "v${BuildConfig.VERSION_NAME}")
+            SettingsNavRow(
+                Icons.Outlined.Info,
+                "版本",
+                if (checkingUpdate) "检查中…" else "v${BuildConfig.VERSION_NAME}",
+            ) {
+                onCheckUpdate()
+            }
             SettingsNavRow(Icons.Outlined.Description, "开源许可", "MIT") { onShowLicense() }
         }
         SectionLabel("项目")
@@ -846,7 +939,7 @@ private fun SettingsGroup(
 private fun SettingsNavRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
-    summary: String,
+    summary: String = "",
     onClick: () -> Unit,
 ) {
     val colors = DsTheme.colors
@@ -866,51 +959,21 @@ private fun SettingsNavRow(
             modifier = Modifier.weight(1f),
             maxLines = 1,
         )
-        Text(
-            text = summary,
-            fontSize = 12.5.sp,
-            color = colors.textTertiary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Spacer(Modifier.width(4.dp))
+        if (summary.isNotBlank()) {
+            Text(
+                text = summary,
+                fontSize = 12.5.sp,
+                color = colors.textTertiary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.width(4.dp))
+        }
         Icon(
             Icons.Outlined.ChevronRight,
             contentDescription = null,
             tint = colors.textTertiary,
             modifier = Modifier.size(17.dp),
-        )
-    }
-}
-
-@Composable
-private fun SettingsInfoRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    value: String,
-) {
-    val colors = DsTheme.colors
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(icon, contentDescription = null, tint = colors.textPrimary, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.width(14.dp))
-        Text(
-            text = title,
-            fontSize = 14.sp,
-            color = colors.textPrimary,
-            modifier = Modifier.weight(1f),
-            maxLines = 1,
-        )
-        Text(
-            text = value,
-            fontSize = 12.5.sp,
-            color = colors.textTertiary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -939,17 +1002,48 @@ private fun SettingsField(
 }
 
 @Composable
+private fun AgentModeRow(mode: AgentMode, selected: Boolean, onClick: () -> Unit) {
+    val colors = DsTheme.colors
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (selected) colors.brandSoft else Color.Transparent)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            if (mode == AgentMode.PLAN) Icons.Outlined.Map else Icons.Filled.PlayArrow,
+            contentDescription = null,
+            tint = if (selected) colors.brand else colors.textSecondary,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(Modifier.width(10.dp))
+        Text(
+            mode.label,
+            fontSize = 13.sp,
+            color = colors.textPrimary,
+            modifier = Modifier.weight(1f),
+        )
+        if (selected) {
+            Icon(
+                Icons.Outlined.Check,
+                contentDescription = "已选择",
+                tint = colors.brand,
+                modifier = Modifier.size(16.dp),
+            )
+        }
+    }
+}
+
+@Composable
 private fun PermissionRow(mode: PermissionMode, selected: Boolean, onClick: () -> Unit) {
     val colors = DsTheme.colors
     val title = when (mode) {
         PermissionMode.ASK -> "询问"
         PermissionMode.AUTO -> "自动执行"
         PermissionMode.READ_ONLY -> "只读"
-    }
-    val description = when (mode) {
-        PermissionMode.ASK -> "写文件、删除、Shell 需批准"
-        PermissionMode.AUTO -> "全部自动执行"
-        PermissionMode.READ_ONLY -> "禁止修改与执行"
     }
     Row(
         modifier = Modifier
@@ -977,10 +1071,12 @@ private fun PermissionRow(mode: PermissionMode, selected: Boolean, onClick: () -
             }
         }
         Spacer(Modifier.width(10.dp))
-        Column {
-            Text(title, fontSize = 13.sp, color = colors.textPrimary)
-            Text(description, fontSize = 10.sp, lineHeight = 14.sp, color = colors.textTertiary)
-        }
+        Text(
+            title,
+            fontSize = 13.sp,
+            color = colors.textPrimary,
+            modifier = Modifier.weight(1f),
+        )
     }
 }
 
@@ -1053,83 +1149,59 @@ private fun McpEditDialog(
     var name by remember { mutableStateOf(existing?.name ?: "") }
     var url by remember { mutableStateOf(existing?.url ?: "") }
     var headers by remember { mutableStateOf(existing?.headers?.let(::headersToText).orEmpty()) }
-    var enabled by remember { mutableStateOf(existing?.enabled ?: true) }
+    val enabled = existing?.enabled ?: true
     var error by remember { mutableStateOf<String?>(null) }
     val colors = DsTheme.colors
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(if (existing == null) "添加 MCP 服务器" else "编辑 MCP 服务器") },
-        text = {
-            Column(
-                Modifier
-                    .height(430.dp)
-                    .verticalScroll(rememberScrollState()),
-            ) {
-                SettingsField("名称", name, { name = it }, placeholder = "例如 GitHub MCP")
-                SettingsField(
-                    "服务器 URL",
-                    url,
-                    { url = it },
-                    placeholder = "https://example.com/mcp",
-                    keyboardType = KeyboardType.Uri,
-                )
-                SettingsField(
-                    "请求头（每行 Key: Value）",
-                    headers,
-                    { headers = it },
-                    placeholder = "Authorization: Bearer …",
-                    minLines = 3,
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("启用", fontSize = 12.sp, color = colors.textSecondary, modifier = Modifier.weight(1f))
-                    Switch(checked = enabled, onCheckedChange = { enabled = it })
-                }
-                Text(
-                    "保存后自动连接并加载工具。",
-                    fontSize = 10.sp,
-                    lineHeight = 15.sp,
-                    color = colors.textTertiary,
-                )
-                error?.let {
-                    Spacer(Modifier.size(6.dp))
-                    Text(it, fontSize = 11.sp, color = colors.danger)
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = {
-                val trimmedUrl = url.trim()
-                if (name.isBlank() || trimmedUrl.isBlank()) {
-                    error = "名称与 URL 不能为空"
-                    return@TextButton
-                }
-                if (!trimmedUrl.startsWith("http://") && !trimmedUrl.startsWith("https://")) {
-                    error = "URL 必须以 http:// 或 https:// 开头"
-                    return@TextButton
-                }
-                onSave(
-                    McpServerConfig(
-                        id = existing?.id ?: "mcp_" + java.util.UUID.randomUUID().toString().take(8),
-                        name = name.trim(),
-                        url = trimmedUrl,
-                        headers = textToHeaders(headers),
-                        enabled = enabled,
-                        transport = "http",
-                    ),
-                )
-            }) { Text("保存") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
-        },
-    )
-}
+    fun save() {
+        val trimmedUrl = url.trim()
+        if (name.isBlank() || trimmedUrl.isBlank()) {
+            error = "名称与 URL 不能为空"
+            return
+        }
+        if (!trimmedUrl.startsWith("http://") && !trimmedUrl.startsWith("https://")) {
+            error = "URL 必须以 http:// 或 https:// 开头"
+            return
+        }
+        onSave(
+            McpServerConfig(
+                id = existing?.id ?: "mcp_" + java.util.UUID.randomUUID().toString().take(8),
+                name = name.trim(),
+                url = trimmedUrl,
+                headers = textToHeaders(headers),
+                enabled = enabled,
+                transport = "http",
+            ),
+        )
+    }
 
-private fun permissionLabel(mode: PermissionMode): String = when (mode) {
-    PermissionMode.ASK -> "询问"
-    PermissionMode.AUTO -> "自动执行"
-    PermissionMode.READ_ONLY -> "只读"
+    MiuixWindowDialog(
+        title = if (existing == null) "添加 MCP 服务器" else "编辑 MCP 服务器",
+        onDismissRequest = onDismiss,
+        dismissText = "取消",
+        confirmText = "保存",
+        onConfirm = { save() },
+    ) {
+        SettingsField("名称", name, { name = it }, placeholder = "GitHub MCP")
+        SettingsField(
+            "服务器 URL",
+            url,
+            { url = it },
+            placeholder = "https://example.com/mcp",
+            keyboardType = KeyboardType.Uri,
+        )
+        SettingsField(
+            "请求头（每行 Key: Value）",
+            headers,
+            { headers = it },
+            placeholder = "Authorization: Bearer …",
+            minLines = 3,
+        )
+        error?.let {
+            Spacer(Modifier.size(6.dp))
+            Text(it, fontSize = 11.sp, color = colors.danger)
+        }
+    }
 }
 
 private fun themeLabel(mode: ThemeMode): String = when (mode) {

@@ -125,26 +125,27 @@ class AgentRunner(
         events: (AgentEvent) -> Unit,
     ): Prepared {
         val agentSettings = settings.toAgentSettings()
+        val planMode = settings.agentMode == com.muzhou.droidagent.agent.AgentMode.PLAN
         val vfs = WorkspaceFactory.create(context, workspace)
         val shell = ShellProvider(context, settings.termuxEnabled).forWorkspace(workspace)
         val session = AgentSessionContext(sessionId, depth)
         val tools = ArrayList<AgentTool>().apply {
             add(ReadFileTool())
-            add(WriteFileTool())
-            add(EditFileTool())
+            if (!planMode) add(WriteFileTool())
+            if (!planMode) add(EditFileTool())
             add(ListDirTool())
             add(GlobTool())
             add(GrepTool())
-            add(DeleteFileTool())
-            add(ShellTool())
+            if (!planMode) add(DeleteFileTool())
+            if (!planMode) add(ShellTool())
             add(JobListTool())
             add(JobOutputTool())
-            add(JobKillTool())
+            if (!planMode) add(JobKillTool())
             add(WebSearchTool())
             add(WebFetchTool())
             add(TodoWriteTool())
             if (depth < 2) add(TaskTool())
-            addAll(mcp.tools())
+            addAll(mcp.tools().filter { !planMode || !it.mutating })
         }
         val registry = ToolRegistry(tools)
         val workspaceInfo = WorkspaceInfo(
@@ -156,8 +157,8 @@ class AgentRunner(
                 com.muzhou.droidagent.agent.workspace.WorkspaceKind.SAF -> "SAF 目录"
             },
             location = WorkspaceFactory.locationLabel(workspace),
-            shellBackend = shell?.backendName,
-            shellAvailable = shell?.available == true,
+            shellBackend = if (planMode) null else shell?.backendName,
+            shellAvailable = !planMode && shell?.available == true,
         )
         val toolContext = ToolContext(
             context = context,
